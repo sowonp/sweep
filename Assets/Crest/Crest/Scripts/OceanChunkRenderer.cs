@@ -78,16 +78,38 @@ namespace Crest
             s_Count -= 1;
         }
 
+        void UpdateMeshBounds()
+        {
+            if (_mesh == null)
+            {
+                return;
+            }
+
+            if (WaterBody.WaterBodies.Count > 0)
+            {
+                _unexpandedBoundsXZ = ComputeBoundsXZ(transform, ref _boundsLocal);
+            }
+
+            var newBounds = _boundsLocal;
+            ExpandBoundsForDisplacements(transform, ref newBounds);
+            _mesh.bounds = newBounds;
+        }
+
         void Start()
         {
             Rend = GetComponent<Renderer>();
-            // Meshes are cloned so it is safe to use sharedMesh in play mode. We need clones to modify the render bounds.
-            _mesh = GetComponent<MeshFilter>().sharedMesh;
+            if (Rend == null) return;
+
+            var mf = GetComponent<MeshFilter>(); //  올바른 var
+            if (mf == null) return;
+
+            _mesh = mf.sharedMesh;
+            if (_mesh == null) return;
 
             UpdateMeshBounds();
-
             SetOneTimeMPBParams();
         }
+
 
         void SetOneTimeMPBParams()
         {
@@ -105,28 +127,16 @@ namespace Crest
 
         private void Update()
         {
-            // Time slice update to distribute the load.
-            if (_index != Time.frameCount % s_Count)
+            if (s_Count == 0 || _index != Time.frameCount % s_Count)
             {
                 return;
             }
 
-            // This needs to be called on Update because the bounds depend on transform scale which can change. Also OnWillRenderObject depends on
-            // the bounds being correct. This could however be called on scale change events, but would add slightly more complexity.
             UpdateMeshBounds();
         }
 
-        void UpdateMeshBounds()
-        {
-            if (WaterBody.WaterBodies.Count > 0)
-            {
-                _unexpandedBoundsXZ = ComputeBoundsXZ(transform, ref _boundsLocal);
-            }
 
-            var newBounds = _boundsLocal;
-            ExpandBoundsForDisplacements(transform, ref newBounds);
-            _mesh.bounds = newBounds;
-        }
+
 
         public static Rect ComputeBoundsXZ(Transform transform, ref Bounds bounds)
         {
